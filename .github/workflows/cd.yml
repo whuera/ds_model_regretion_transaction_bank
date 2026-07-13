@@ -1,0 +1,94 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    # Solo si el CI (tests + gate de calidad) pasó en main.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Entrenar el modelo que va dentro de la imagen
+        run: |
+          pip install -r requirements.txt
+          python -m src.train \
+            --data data/bank_transactions_data_2_augmented_clean_2.csv \
+            --no-register
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadata de la imagen
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Build y push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      # ── Plantilla de despliegue ──────────────────────────────────────
+      # Elige UNA de las opciones y define los secretos en
+      # Settings > Secrets and variables > Actions. No hardcodear credenciales.
+      #
+      # Render: dispara el deploy hook del servicio.
+      - name: Deploy a Render (plantilla)
+        if: ${{ false }}  # activar cuando RENDER_DEPLOY_HOOK_URL esté configurado
+        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+      # Fly.io:
+      - name: Deploy a Fly.io (plantilla)
+        if: ${{ false }}  # activar cuando FLY_API_TOKEN esté configurado
+        run: |
+          curl -L https://fly.io/install.sh | sh
+          ~/.fly/bin/flyctl deploy --image "$IMAGE"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      # Google Cloud Run:
+      - name: Deploy a Cloud Run (plantilla)
+        if: ${{ false }}  # activar cuando GCP_SA_KEY esté configurado
+        run: |
+          echo "gcloud run deploy bank-transaction-api \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            --region us-central1 --allow-unauthenticated"
+
+      - name: Sin destino configurado
+        run: echo "Configura un destino de despliegue (ver plantillas arriba)."

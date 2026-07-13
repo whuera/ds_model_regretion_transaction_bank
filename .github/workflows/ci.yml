@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Entrenamiento en modo validación + gate de calidad
+        # train.py devuelve exit code 1 si ningún modelo pasa el gate de R²
+        # o si el RMSE del candidato se degrada más del umbral -> falla el job.
+        run: |
+          python -m src.train \
+            --data data/bank_transactions_data_2_augmented_clean_2.csv \
+            --sample-frac 0.1 \
+            --no-register
+
+      - name: Tests (incluye no-regresión sobre el candidato recién entrenado)
+        run: python -m pytest
+
+      - name: Publicar artefactos de MLflow del run de CI
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns
+          path: mlruns/
+          retention-days: 14

@@ -1,0 +1,14 @@
+# entorno
+.venv/
+__pycache__/
+*.pyc
+
+# artefactos locales de entrenamiento y serving
+# (en producción, MLflow apunta a un tracking server remoto)
+mlruns/
+models/
+logs/
+
+.DS_Store
+.pytest_cache/
+.claude/settings.local.json
