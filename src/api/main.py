@@ -23,9 +23,11 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 
+# pyrefly: ignore [missing-import]
 from src.api.schemas import PredictionOutput, TransactionInput
 
-MODEL_PATH = os.getenv("MODEL_PATH", "models/model.joblib")
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+MODEL_PATH = os.getenv("MODEL_PATH", str(_PROJECT_ROOT / "models" / "model.joblib"))
 PREDICTIONS_LOG_PATH = os.getenv("PREDICTIONS_LOG_PATH", "logs/predictions.jsonl")
 
 _state: dict = {}
@@ -89,10 +91,13 @@ def _log_prediction(entrada: TransactionInput, salida: PredictionOutput) -> None
         "input": entrada.model_dump(mode="json"),
         "output": {"predicted_amount": salida.predicted_amount},
     }
-    path = Path(PREDICTIONS_LOG_PATH)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a") as f:
-        f.write(json.dumps(registro) + "\n")
+    try:
+        path = Path(PREDICTIONS_LOG_PATH)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a") as f:
+            f.write(json.dumps(registro) + "\n")
+    except OSError:
+        pass  # filesystem read-only (e.g. Vercel serverless)
 
 
 @app.get("/health")
