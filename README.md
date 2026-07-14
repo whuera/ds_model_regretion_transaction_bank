@@ -134,3 +134,6 @@ docker run -p 8000:8000 bank-transaction-api
 ├── Dockerfile
 └── requirements.txt
 ```
+## Curl
+curl -s -X POST https://ds-model-regretion-transaction-bank.vercel.app/predict -H "Content-Type: application/json" -d '{"transaction_type": "D
+ebit", "channel": "ATM", "location": "Los Angeles", "customer_occupation": "Doctor", "customer_age": 45, "transaction_duration": 60, "login_attempts": 2, "account_balance": 10000.0, "transaction_date": "2024-06-15T15:00:00"}'
