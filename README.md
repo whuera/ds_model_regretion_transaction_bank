@@ -91,6 +91,10 @@ curl -X POST http://localhost:8000/predict \
     "account_balance": 13758.91,
     "transaction_date": "2023-06-27T16:44:00"
   }'
+
+curl -s -X POST https://ds-model-regretion-transaction-bank.vercel.app/predict -H "Content-Type: application/json" -d '{"transaction_type": "D
+ebit", "channel": "ATM", "location": "Los Angeles", "customer_occupation": "Doctor", "customer_age": 45, "transaction_duration": 60, "login_attempts": 2, "account_balance": 10000.0, "transaction_date": "2024-06-15T15:00:00"}'
+
 ```
 
 Respuesta:
